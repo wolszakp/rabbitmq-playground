@@ -2,7 +2,6 @@
 
 ## Performance tests
 
-
 https://github.com/rabbitmq/rabbitmq-perf-test?tab=readme-ov-file
 
 docker run -it --rm pivotalrabbitmq/perf-test:latest --help
@@ -18,7 +17,7 @@ docker run -it --rm --network perf-test pivotalrabbitmq/perf-test:latest --uri a
 ### 3.13.0
 
 With limiting memory and CPU:
-```
+```bash
 docker run -it --rm --cpus="0.5" --memory="1g" --network perf-test --name rabbitmq -p 15672:15672 rabbitmq:3.13.0-management
 ```
 
@@ -64,9 +63,37 @@ id: test-135534-374, receiving rate avg: 10079 msg/s
 id: test-135534-374, consumer latency min/median/75th/95th/99th 37664/422655/464396/493848/1437912 µs
 ```
 
+## Queueus
+
+- Queues always keep parto of messages in memory
+- Queue is an Erlang process  
+  Has its own heap (security & reliability)
+- Body is stored separately in a seprate memory  
+  Body of the message is stored in `Binaries` (shared across different processes)  
+  When message is stored in multiple queues then body of it is stored only once. 
+  Headers and properties are copied across queues.
+- Service booting  
+  When RabbitMQ starts, up to 15384 messages smaller than 4k are loaded into memory per queue
+- Lazy queues  
+  Memory over throughput (When memory is more important than throughput)
+  Consumers are slow (Queueues grow and consume more memory than needed) 
+  Apply lazy mode on dead letter queues  (error quques)
+
+
+## Configuration
+
+-`rabbitmq.conf` file 
+[rabbitmq.conf.example](https://github.com/rabbitmq/rabbitmq-server/blob/main/deps/rabbit/docs/rabbitmq.conf.example)
+in config it is named without extension. File however need that extension.
+- `heartbeat` (default 60s)
+https://www.rabbitmq.com/docs/heartbeats#heartbeats-timeout
+- `frame_max` (default 131072 bytes) 
+Set the max permissible size of an AMQP frame (in bytes).
+https://github.com/rabbitmq/rabbitmq-server/blob/main/deps/rabbit/docs/rabbitmq.conf.example
+Larger value improves ghroughtput, smaller value improves latency (not related with max message size which is 2GB)
+
 
 ## Tunning
-
 
 - `queue_index_embed_msgs_below`, -> half of the default message size (default 4096)
 From node:
@@ -76,4 +103,4 @@ rabbitmq-diagnostics environment | grep queue_index -A 10
 
 - `rates_mode` - set to `none` (already we have that)
 
-
+- `frame_max` (default 311072 bytes)  
