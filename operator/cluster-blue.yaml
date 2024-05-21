@@ -1,0 +1,62 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rabbitmq-blue
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rabbitmq-user
+  namespace: rabbitmq-blue
+data:
+  username: YWRtaW4=
+  password: cGFzc3dvcmQ=
+  #  echo <password> | openssl base64
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: User
+metadata:
+  name: admin
+  namespace: rabbitmq-blue
+spec:
+  tags:
+  - administrator
+  rabbitmqClusterReference:
+    name: rabbitmq-cluster
+  importCredentialsSecret:
+    name: rabbitmq-user
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: RabbitmqCluster
+metadata:
+  name: rabbitmq-cluster
+  namespace: rabbitmq-blue
+spec:
+  replicas: 3
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  rabbitmq:
+    # TODO: Added to original setup, no restart required
+    additionalPlugins: [ "rabbitmq_federation", "rabbitmq_federation_management" ]
+    additionalConfig: |
+      cluster_formation.peer_discovery_backend             = rabbit_peer_discovery_k8s
+      cluster_formation.k8s.host                           = kubernetes.default.svc.cluster.local
+      cluster_formation.k8s.address_type                   = hostname
+      cluster_partition_handling                           = pause_minority
+      queue_master_locator                                 = min-masters
+      disk_free_limit.absolute                             = 2GB
+      cluster_formation.randomized_startup_delay_range.min = 0
+      cluster_formation.randomized_startup_delay_range.max = 60
+      cluster_name                                         = rabbitmq
+      collect_statistics_interval                          = 5000
+      management_agent.disable_metrics_collector           = false
+      management.rates_mode                                = basic
+      management.disable_stats                             = false
+      management.enable_queue_totals                       = true
+      vm_memory_high_watermark.relative                    = 0.95

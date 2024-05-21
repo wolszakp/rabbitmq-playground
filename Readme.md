@@ -104,3 +104,35 @@ rabbitmq-diagnostics environment | grep queue_index -A 10
 - `rates_mode` - set to `none` (already we have that)
 
 - `frame_max` (default 311072 bytes)  
+
+## RabbitMQ form operator
+
+https://www.rabbitmq.com/kubernetes/operator/configure-operator-defaults
+
+- Messaging topology operator
+https://github.com/rabbitmq/messaging-topology-operator/releases
+Current version: v1.11.0
+Can update to latest: v1.13.0, v1.12.2, v1.12.1, v1.12.0, v1.11.0
+
+- Cluster operator
+https://github.com/rabbitmq/cluster-operator
+
+Current: 1.8.1
+
+| From | To  | Notes |
+| ---- | --- | --- |
+| 1.8.1 | 1.8.2, 1.8.3, | Non cluster changes, default rmq 3.8.21 |
+| 1.8.3 | 1.9.0 | will upgrade the cluster |
+| 1.9.0 | 1.10.0 | Non cluster changes |
+| 1.10.0 | 1.11.0, 1.11.1 | will upgrade the cluster |
+| 1.11.1 | 1.12.0, 1.12.1 | Non cluster changes, default rmq 3.9.12 |
+| 1.12.1 | 1.13.0, 1.13.1 | Non cluster changes, default rmq 3.10.2 |
+| 1.13.1 | 1.14.0 | Non cluster changes |
+| 1.14.0 | 2.0.0 | BREAKING, requires rmq 3.9.9 or up, will upgrade the cluster |
+| 2.0.0 | 2.1.0 | Will upgrade the cluster |
+| 2.1.0 | 2.2.0, 2.3.0 | Non cluster changes, default rmq 3.11.18 |
+| 2.3.0 | 2.4.0 | BREAKING, use rmq 3.12.2 by default, please make sure: </br> - You currently run 3.11.18 </br> - All feature flags are enabled (rabbitmqctl list_feature_flags, rabbitmqctl enable_feature_flag all) <br/> - Verify https://www.rabbitmq.com/upgrade.html |
+| 2.4.0 | 2.5.0, 2.6.0, 2.7.0 | Non cluster changes |
+| 2.7.0 | 2.8.0 | Non cluster changes, default rmq 3.13 |
+
+
