@@ -2,16 +2,15 @@
 
 input_file="$1"
 output_file="$2"
-skipped_queues="lighthouse.notifications_"
 echo -e "###################################################################
 # Script Name  : change_queue_definitions_to_quorum.sh
 # Version      : 1.0
-# Description  : Script should be called with json file (export from rabbitmq cluster) 
+# Description  : Script should be called with json file (export from rabbitmq cluster)
 #    Script exchange classic queue type to quorum for all queues in all vhosts
+#    but only those that have auto_delete set to false
 # Args         :
 #    input_file=${input_file}
 #    output_file=${output_file}
-#    skipped_queues=${skipped_queues} - queues with names starts like this will be omitted
 # Author       : Piotr Wolszakiewicz
 ###################################################################"
 
@@ -23,7 +22,7 @@ fi
 
 jq '
   .queues |= map(
-    if .type == "classic" and (.name | startswith("'$skipped_queues'") | not) then
+    if .type == "classic" and .auto_delete == false then
       .type = "quorum"
     else
       .
