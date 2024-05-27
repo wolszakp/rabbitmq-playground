@@ -20,6 +20,20 @@ Glossary:
 9. Disable federation from `green` cluster
 10. Delete `blue` cluster
 
+### Scripts to automate deployment
+
+In `blue-green-migration` directory there is a package of scripts to automate migration
+- `.env` - contains all needed configuration: hosts, auth etc. Need to be filled out with proper configuration
+- `check_connectivity.sh` - script verify if configuration in  `.env` file is correct
+- `change_queue_definitions_to_quorum.sh` - script changes classic queues to quorum.
+- `install_dependencies.sh` - script instal all needed dependencies for other scripts
+- `rabbitmq_api_utils.sh` - library with all rabbitmq functions; referenced by other scripts
+- `enable_federation.sh` - enable federation on green cluster for single vhost. vhost provided as an argument
+- `enable_federation_for_all.sh` - enables federation on green cluster for all vhosts from green cluster
+- `disable_federation.sh` - disable federation on green cluster for single vhost. vhost provided as an argument
+- `disable_federation_for_all.sh` - disable federation on green cluster for all vhosts from green cluster
+- `delete_vhost.sh` - delete vhost from blue cluster. vhost provided as an argument
+
 ### Detailed steps to upgrade cluster with migration to quorum queues
 1. Spin up `green` cluster in another namespace
 
@@ -28,37 +42,9 @@ Glossary:
 - enable federation  
   `additionalPlugins: [ "rabbitmq_federation", "rabbitmq_federation_management" ]`
 - optionally enable prometheus  
-  ``additionalPlugins: [ "rabbitmq_prometheus" ]`
-
-- below there is full cluster setup:
+  `additionalPlugins: [ "rabbitmq_prometheus" ]`
+- in the `additionalConfig` section this options should be set:
 ```yml
-apiVersion: rabbitmq.com/v1beta1
-kind: RabbitmqCluster
-metadata:
-  name: rabbitmq-cluster
-  namespace: rabbitmq-green
-spec:
-  replicas: 3
-  resources:
-    requests:
-      cpu: 1000m
-      memory: 2Gi
-    limits:
-      cpu: 1000m
-      memory: 2Gi
-  image: rabbitmq:3.13.1-management
-  rabbitmq:
-    additionalPlugins: [ "rabbitmq_federation", "rabbitmq_federation_management" ]
-    additionalConfig: |
-      cluster_formation.peer_discovery_backend             = rabbit_peer_discovery_k8s
-      cluster_formation.k8s.host                           = kubernetes.default.svc.cluster.local
-      cluster_formation.k8s.address_type                   = hostname
-      cluster_partition_handling                           = pause_minority
-      queue_master_locator                                 = min-masters
-      disk_free_limit.absolute                             = 2GB
-      cluster_formation.randomized_startup_delay_range.min = 0
-      cluster_formation.randomized_startup_delay_range.max = 60
-      cluster_name                                         = rabbitmq
       collect_statistics_interval                          = 15000
       management_agent.disable_metrics_collector           = false
       management.rates_mode                                = basic
@@ -132,9 +118,10 @@ e.g. using management ui
   
   Federation will enable consumers to consume messages from both `blue` and `green` cluster.  
   When connection will be made to `green` cluster under the hood messages will be read from `blue` cluster
-8. This is the moment to verify that everything works. 
+
+8. This is the moment to verify that everything works.  
   Until this moment changes shouldn't impact current workload.
-8. Change configuration from `blue` cluster into `green` one
+9. Change configuration from `blue` cluster into `green` one
   It would be good to have external service that will keep endpoint (CNAME) for rabbitmq:
   ```yml
     apiVersion: v1
@@ -159,9 +146,9 @@ e.g. using management ui
   ```
   This way change in single place will change connection for all environments.
 
-9. Switch `publishers`/`consumers` to use new cluster
+10. Switch `publishers`/`consumers` to use new cluster
   ?????? RESTART THE POD ??????
-10. Ensure that all messages are gone from `blue` cluster.  
+11. Ensure that all messages are gone from `blue` cluster.  
   It can be done e.g. vhost by vhost. 
   You can use script to get total messages in vhost
   ```bash

@@ -8,6 +8,8 @@ echo -e "###################################################################
 # Description  : Script should be called with json file (export from rabbitmq cluster)
 #    Script exchange classic queue type to quorum for all queues in all vhosts
 #    but only those that have auto_delete set to false
+#    Script also omit queues, exchanges and bindings for error definitions
+#    with name (source, destination for bindings) that has '_error' suffix
 # Args         :
 #    input_file=${input_file}
 #    output_file=${output_file}
@@ -21,13 +23,16 @@ if [ $# -ne 2 ]; then
 fi
 
 jq '
+  .queues |= map(select(.name | endswith("_error") | not)) |
   .queues |= map(
     if .type == "classic" and .auto_delete == false then
       .type = "quorum"
     else
       .
     end
-  )
+  ) |
+  .exchanges |= map(select(.name | endswith("_error") | not)) |
+  .bindings |= map(select((.destination | endswith("_error") | not) and (.source | endswith("_error") | not)))
 ' "$input_file" > "$output_file"
 
 echo "Updated JSON has been saved to $output_file"

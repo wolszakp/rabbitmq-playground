@@ -9,8 +9,8 @@ vhost="$1"
 echo -e "###################################################################
 # Script Name  : get_vhost_stats.sh
 # Version      : 1.0
-# Description  : Script gets queue stats for provided vhost. Script is called
-#    on the blue cluster.
+# Description  : Script gets queue and connection stats for provided vhost. 
+#    Script is called on the blue cluster.
 #    Script import environment variables from .env file
 # Args         :
 #    vhost=${vhost}
@@ -28,4 +28,5 @@ fi
 
 source rabbitmq_api_utils.sh
 
-get_vhost_stats "$blue_api_url" "$blue_user:$blue_password" "$vhost"
+get_vhost_queue_stats "$blue_api_url" "$blue_user:$blue_password" "$vhost"
+get_vhost_connection_stats "$blue_api_url" "$blue_user:$blue_password" "$vhost"

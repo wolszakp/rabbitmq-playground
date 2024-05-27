@@ -147,7 +147,7 @@ check_api_connection() {
     fi
 }
 
-get_vhost_stats() {
+get_vhost_queue_stats() {
     local api_url="$1"
     local api_basic_auth="$2"
     local vhost="$3"
@@ -160,12 +160,35 @@ get_vhost_stats() {
 
     if [[ $response_status -ge 200 && $response_status -lt 300 ]]; then
         logger "Get queue stats for vhost: $vhost finished successfully" true
-        total_messages_in_queues=$(cat $response_message | jq '[.[].messages] | add')
+        local total_messages_in_queues=$(cat $response_message | jq '[.[].messages] | add')
         # This is whole outpu json
         # cat $response_message | jq
         echo "There is $total_messages_in_queues messages in all queues for vhost: $vhost"
     else
         logger "Error: Failed to get queue stats for vhost: $vhost" false
+        cat $response_headers
+        cat $response_message
+        return 1
+    fi
+}
+
+get_vhost_connection_stats() {
+    local api_url="$1"
+    local api_basic_auth="$2"
+    local vhost="$3"
+    local response_message="/tmp/get_vhost_conn_stats-$RANDOM.txt"
+    local response_headers="/tmp/get_vhost_stats_conn_headers-$RANDOM.txt"
+    request_url="$api_url/vhosts/$vhost/connections"
+    logger "Getting connection stats for vhost: $vhost"
+    logger "Call RabbitMQ API: $request_url"
+    response_status=$(curl -s -D $response_headers --fail-with-body -u "$api_basic_auth" -o $response_message -w "%{http_code}" -X GET -H "Accept: application/json" "$request_url")
+
+    if [[ $response_status -ge 200 && $response_status -lt 300 ]]; then
+        logger "Get connection stats for vhost: $vhost finished successfully" true
+        local total_connections=$(cat $response_message | jq 'length')
+        echo "There is $total_connections connections for vhost: $vhost"
+    else
+        logger "Error: Failed to get connection stats for vhost: $vhost" false
         cat $response_headers
         cat $response_message
         return 1
