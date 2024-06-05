@@ -14,6 +14,33 @@ and verify how this node is synced
 rabbitmq-queues check_if_node_is_quorum_critical
 ```
 
+## How to speed up restart?
+
+In our case closing connections to particular node that is terminating change output logs to this:
+```log
+rabbitmq <concrete-date> [info] <0.24591.3> queue '<queue-name>' in vhost '<vhost-name>': term mismatch - follower had entry at <number> with term <number> but not with term <number>
+rabbitmq <concrete-date> [info] <0.24591.3> Asking leader {'<queue-name>','<one of the server nodes>'} to resend from 307
+```
+
+How to do it?
+
+1. Take connections name - running the script from one of the rabbitmq pods:
+```bash
+rabbitmqadmin list connections
+```
+
+2. Make api call running this bash script:
+```bash
+#!/bin/sh
+user=<user-name>
+password=<password>
+apiUrl="https://<host-of-your-cluster>/api/connections/"
+# url need to be encoded so
+# for conection with name: 10.244.21.107:35096 -> 10.244.57.6:5672
+# curl looks like below
+curl --request DELETE -v --user $user:$password --url "${apiUrl}10.244.25.197%3A60474%20-%3E%2010.244.59.7%3A5672"
+```
+
 ## Pods Are stuck in the Termination state
 
 Here is detailed [docs](https://www.rabbitmq.com/kubernetes/operator/troubleshooting-operator#pods-stuck-in-terminating-state)
