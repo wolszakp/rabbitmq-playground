@@ -42,6 +42,11 @@ get_federation_policy_name() {
     echo -n "federation-$vhost-policy"
 }
 
+get_max_error_queue_size_policy_name() {
+    local vhost="$1"
+    echo -n "max-error-queue-size-policy"
+}
+
 create_federation_upstream() {
     local api_url="$1"
     local api_basic_auth="$2"
@@ -124,6 +129,52 @@ delete_federation_policy() {
         logger "Deleted federation policy $federation_policy_name for vhost:$vhost successfully" true
     else
         logger "Error: Failed to delete federation policy $federation_policy_name for vhost:$vhost" false
+        cat $response_message
+        return 1
+    fi
+}
+
+create_max_queue_size_policy() {
+    local api_url="$1"
+    local api_basic_auth="$2"
+    local vhost="$3"
+    local queue_pattern="$4"
+    local max_length="$5"
+    local response_message="/tmp/create_max_queue_size_policy_response-$RANDOM.txt"
+    local policy_name=$(get_max_error_queue_size_policy_name "$vhost")
+    request_url="$api_url/policies/$vhost/$policy_name"
+    logger "Creating max queue size policy $policy_name for vhost:$vhost"
+    logger "Call RabbitMQ API: $request_url"
+    local data="{\"pattern\":\"$queue_pattern\", \"definition\": {\"max-length\": \"$max_length\"}, \"apply-to\": \"queues\"}"
+    logger "Create max queue size policy DATA: $data"
+    local response_status=$(curl -s -i --fail-with-body -u "$api_basic_auth" -o $response_message -w "%{http_code}" -X PUT -H "Content-Type: application/json" -d "$data" "$request_url")
+
+    if [[ $response_status -ge 200 && $response_status -lt 300 ]]; then
+        logger "Created max queue size policy $policy_name for vhost:$vhost successfully" true
+    else
+        logger "Error: Failed to create max queue size policy $policy_name for vhost:$vhost" false
+        cat $response_message
+        return 1
+    fi
+}
+
+delete_max_queue_size_policy() {
+    local api_url="$1"
+    local api_basic_auth="$2"
+    local vhost="$3"
+    local queue_pattern="$4"
+    local max_length="$5"
+    local response_message="/tmp/delete_max_queue_size_policy_response-$RANDOM.txt"
+    local policy_name=$(get_max_error_queue_size_policy_name "$vhost")
+    local request_url="$api_url/policies/$vhost/$policy_name"
+    logger "Deleting max queue size policy $policy_name for vhost:$vhost"
+    logger "Call RabbitMQ API: $request_url"
+    local response_status=$(curl -s -i -u "$api_basic_auth" --fail-with-body -o $response_message -w "%{http_code}" -X DELETE "$request_url")
+
+    if [[ $response_status -ge 200 && $response_status -lt 300 ]]; then
+        logger "Deleted max queue size policy $policy_name for vhost:$vhost successfully" true
+    else
+        logger "Error: Failed to delete max queue size policy $policy_name for vhost:$vhost" false
         cat $response_message
         return 1
     fi

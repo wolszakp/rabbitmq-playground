@@ -32,7 +32,8 @@ In `blue-green-migration` directory there is a package of scripts to automate mi
 - `enable_federation_for_all.sh` - enables federation on green cluster for all vhosts from green cluster
 - `disable_federation.sh` - disable federation on green cluster for single vhost. vhost provided as an argument
 - `disable_federation_for_all.sh` - disable federation on green cluster for all vhosts from green cluster
-- `delete_vhost.sh` - delete vhost from blue cluster. vhost provided as an argument
+- `delete_vhost.sh` - delete vhost from blue cluster. vhost provided as an 
+- `enable_max_error_queue_size_for_all.sh` - enables max error queue size policy on green cluster for all vhosts
 
 ### Detailed steps to upgrade cluster with migration to quorum queues
 1. Spin up `green` cluster in another namespace
