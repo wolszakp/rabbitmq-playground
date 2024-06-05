@@ -2,6 +2,16 @@
 
 It is good to verify if any of your issues are in [Troubleshooting documentation](https://www.rabbitmq.com/kubernetes/operator/troubleshooting-operator)
 
+## How to set up log level on any node even in Terminated state?
+
+Let's assume there are two nodes `rabbit@server-0.rabbitmq-nodes.local` is in `Terminated` state and `rabbit@server-1.rabbitmq-nodes.local` running. 
+You don't see that something is happening on `rabbit@server-0.rabbitmq-nodes.local`.
+You can log in into running node and run command:
+```bash
+rabbitmqctl --node rabbit@server-0.rabbitmq-nodes.local set_log_level debug
+```
+
+rabbitmqctl --node rabbit@rabbitmq-cluster-server-1.rabbitmq-cluster-nodes.lighthouse set_log_level debug
 
 ## Why restart of pods takes so much time - 7 days?
 
@@ -24,6 +34,15 @@ rabbitmq <concrete-date> [info] <0.24591.3> Asking leader {'<queue-name>','<one 
 
 How to do it?
 
+Easier way is to use rabbitmqctl from one of the rabbitmq pods:
+
+```bash
+# e.g. for node name: rabbit@server-1.rabbitmq-cluster-nodes.local
+rabbitmqctl --node rabbit@server-1.rabbitmq-cluster-nodes.local close_all_connections "Reason - termination of node"
+```
+
+OR
+
 1. Take connections name - running the script from one of the rabbitmq pods:
 ```bash
 rabbitmqadmin list connections
@@ -45,9 +64,22 @@ curl --request DELETE -v --user $user:$password --url "${apiUrl}10.244.25.197%3A
 
 Here is detailed [docs](https://www.rabbitmq.com/kubernetes/operator/troubleshooting-operator#pods-stuck-in-terminating-state)
 
-## I want to delete one pod and pause a deployment of it
+## I want to delete one pod and pause a deployment for it
 
-Here is detailed [docs](https://www.rabbitmq.com/kubernetes/operator/troubleshooting-operator#pods-crash-loop)
+[Source](https://www.rabbitmq.com/kubernetes/operator/troubleshooting-operator#pods-crash-loop)
+
+1. `kubectl label rabbitmqclusters INSTANCE-NAME rabbitmq.com/pauseReconciliation=true` ([source](https://www.rabbitmq.com/kubernetes/operator/using-operator#pause))  
+  or `kubectl rabbitmq pause-reconciliation RMQ_NAME`. 
+  - this means the Operator won't "fix" (overwrite) manual changes to the underlying objects
+  In prior of that in our case we need to disable flux reconciliation as well:
+  `kubectl annotate rabbitmqclusters INSTANCE-NAME kustomize.toolkit.fluxcd.io/reconcile=disabled`
+
+  `kubectl annotate rabbitmqclusters rabbitmq-cluster kustomize.toolkit.fluxcd.io/reconcile=disabled`
+2. `kubectl delete statefulset --cascade=orphan RMQ_NAME-server` - delete the statefulset so that it doesn't "fix" the pods (recreate the missing pod after we delete it)
+3. `kubectl delete pod RMQ_SERVER-server-2` (you can delete any pod you want here)
+kubectl delete pvc RMQ_NAME-server-2
+kubectl delete pv PV_NAME if needed (this will completely delete the previous disk/data)
+kubectl rabbitmq resume-reconciliation RMQ_NAME (or delete the label) - the Operator fixes the deployment by recreating the StatefulSet and the StatefulSet recreates the missing pod and PVC
 
 ## My pod is restarting during startup with Mensia timeout
 
