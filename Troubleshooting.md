@@ -11,8 +11,6 @@ You can log in into running node and run command:
 rabbitmqctl --node rabbit@server-0.rabbitmq-nodes.local set_log_level debug
 ```
 
-rabbitmqctl --node rabbit@rabbitmq-cluster-server-1.rabbitmq-cluster-nodes.lighthouse set_log_level debug
-
 ## Why restart of pods takes so much time - 7 days?
 
 Termination Grace Period Timeout is is `604800` - `7 days` [docs](https://www.rabbitmq.com/kubernetes/operator/using-operator#TerminationGracePeriodSeconds).
