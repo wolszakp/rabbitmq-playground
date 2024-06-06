@@ -145,7 +145,7 @@ create_max_queue_size_policy() {
     request_url="$api_url/policies/$vhost/$policy_name"
     logger "Creating max queue size policy $policy_name for vhost:$vhost"
     logger "Call RabbitMQ API: $request_url"
-    local data="{\"pattern\":\"$queue_pattern\", \"definition\": {\"max-length\": \"$max_length\"}, \"apply-to\": \"queues\"}"
+    local data="{\"pattern\":\"$queue_pattern\", \"definition\": {\"max-length\": $max_length}, \"apply-to\": \"queues\"}"
     logger "Create max queue size policy DATA: $data"
     local response_status=$(curl -s -i --fail-with-body -u "$api_basic_auth" -o $response_message -w "%{http_code}" -X PUT -H "Content-Type: application/json" -d "$data" "$request_url")
 
