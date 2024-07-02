@@ -288,3 +288,42 @@ get_all_vhosts() {
         return 1
     fi
 }
+
+get_cluster_definitions() {
+    local api_url="$1"
+    local api_basic_auth="$2"
+    local output_file="$3"
+    local response_headers="/tmp/get_cluster_definition_headers-$RANDOM.txt"
+    request_url="$api_url/definitions"
+    logger "Getting cluster definitions"
+    logger "Call RabbitMQ API: $request_url"
+    response_status=$(curl -s -D $response_headers --fail-with-body -u "$api_basic_auth" -o $output_file -w "%{http_code}" -X GET -H "Accept: application/json" "$request_url")
+
+    if [[ $response_status -ge 200 && $response_status -lt 300 ]]; then
+        logger "Get cluster definitions finished successfully" true
+    else
+        logger "Error: Failed to get cluster definitions " false
+        cat $response_headers
+        cat $response_message
+        return 1
+    fi
+}
+
+set_cluster_definitions() {
+    local api_url="$1"
+    local api_basic_auth="$2"
+    local input_file="$3"
+    local response_message="/tmp/set_cluster_definition_message-$RANDOM.txt"
+    request_url="$api_url/definitions"
+    logger "Setting cluster definitions"
+    logger "Call RabbitMQ API: $request_url"
+    response_status=$(curl -s -i --fail-with-body -u "$api_basic_auth" -o $response_message -w "%{http_code}" -H "Content-Type: multipart/form-data" -F file=@$input_file "$request_url")
+
+    if [[ $response_status -ge 200 && $response_status -lt 300 ]]; then
+        logger "Set cluster definitions finished successfully" true
+    else
+        logger "Error: Failed to set cluster definitions " false
+        cat $response_message
+        return 1
+    fi
+}
