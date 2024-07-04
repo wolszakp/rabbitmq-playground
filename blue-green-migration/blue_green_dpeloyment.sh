@@ -4,7 +4,6 @@ set -o allexport
 # shellcheck source=/dev/null
 source .env
 set +o allexport
-vhost="$1"
 
 echo -e "###################################################################
 # Script Name  : blue_green_dpeloyment.sh
