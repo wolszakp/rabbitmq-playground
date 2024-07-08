@@ -7,16 +7,16 @@ set +o allexport
 set -euo pipefail
 
 echo -e "###################################################################
-# Script Name  : blue_green_dpeloyment.sh
+# Script Name  : backup_and_restore.sh
 # Version      : 1.0
-# Description  : Script do complete blue-green deploymnet.
+# Description  : Script do backup and restore between two servers.
 #    It export definition from existing cluster - blue
 #    Skip _error(queues, bindings, exchanges) and skip cluster name
+#    Skip also auto_delete (exchanges and queues) while they are deleted 
+#    after connection lost.
 #    Import definition into new cluster - green
-#    Set up queue federation for all vhosts in green cluster
 #    Script import environment variables from .env file
 # Args         :
-#    federation_queue_pattern=${federation_queue_pattern}
 #    blue_host=${blue_host}
 #    blue_amqp_port=${blue_amqp_port}
 #    blue_protocol=${blue_protocol}
@@ -29,9 +29,6 @@ echo -e "###################################################################
 ###################################################################"
 
 source rabbitmq_api_utils.sh
-
-blue_password_encoded=$(urlencode "$blue_password")
-blue_url="$blue_protocol://$blue_user:$blue_password_encoded@$blue_host:$blue_amqp_port"
 
 echo "export definitions from blue cluster"
 cluster_definition_file="./blue-cluster-definitions-$RANDOM.json"
@@ -50,18 +47,3 @@ jq '
 # cat $cluster_definition_file_modified | jq
 
 set_cluster_definitions "$green_api_url" "$green_user:$green_password" "$cluster_definition_file_modified"
-
-cluster_name="green"
-logger "Getting vhosts from: $cluster_name cluster"
-vhosts=$(get_all_vhosts "$green_api_url" "$green_user:$green_password" $cluster_name)
-
-for vhost in $vhosts; do
-    if [[ $vhost = "/" ]]; then
-        echo "Skiping root vhost: /"
-        continue
-    fi
-    echo "Processing vhost: $vhost"
-    create_federation_upstream "$green_api_url" "$green_user:$green_password" "$vhost" "$blue_url"
-    create_federation_policy "$green_api_url" "$green_user:$green_password" "$vhost" "$federation_queue_pattern"
-    echo "Processed vhost: $vhost - successfully"
-done

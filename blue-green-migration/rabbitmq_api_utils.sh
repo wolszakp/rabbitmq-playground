@@ -321,6 +321,8 @@ set_cluster_definitions() {
 
     if [[ $response_status -ge 200 && $response_status -lt 300 ]]; then
         logger "Set cluster definitions finished successfully" true
+    elif [[ $response_status -ge 100 && $response_status -lt 200 ]]; then
+        logger "Warning: Set cluster definitions not completed - it is continued on the server " true
     else
         logger "Error: Failed to set cluster definitions " false
         cat $response_message
