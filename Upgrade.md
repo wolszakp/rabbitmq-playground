@@ -6,6 +6,8 @@ Glossary:
 - `blue` - rabbitmq cluster with old version
 - `green` - cluster cluster with newest version
 
+![Blue-Green](.img/rabbitmq-switch-blue-green-on-entry-service.png)
+
 ### Overall view
 
 1. Spin new `green` cluster (with `federation` plugin enabled)
@@ -35,6 +37,7 @@ In `blue-green-migration` directory there is a package of scripts to automate mi
 - `delete_vhost.sh` - delete vhost from blue cluster. vhost provided as an 
 - `enable_max_error_queue_size_for_all.sh` - enables max error queue size policy on green cluster for all vhosts
 - `blue_green_dpeloyment.sh` - complete blue-green deployment. It migrate configuration from blue cluster to green and set up federation for all vhosts.
+- `backup_and_restore.sh` - backup configuration from blue cluster (users, vhosts, permissions, policies, bindings, queues, exchanges). Import them into green cluster.
 
 ### Detailed steps to upgrade cluster with migration to quorum queues
 1. Spin up `green` cluster in another namespace
@@ -129,22 +132,22 @@ e.g. using management ui
     apiVersion: v1
     kind: Service
     metadata:
-      name: rabbitmq-cluster
-      namespace: rabbitmq-system
+      name: rabbitmq
+      namespace: rabbitmq-cluster
     spec:
       type: ExternalName
-      externalName: rabbitmq-cluster.rabbitmq-blue.svc.cluster.local
+      externalName: blue.rabbitmq-cluster.svc.cluster.local
   ```
   and do the change to green one:
   ```yml
     apiVersion: v1
     kind: Service
     metadata:
-      name: rabbitmq-cluster
-      namespace: rabbitmq-system
+      name: rabbitmq
+      namespace: rabbitmq-cluster
     spec:
       type: ExternalName
-      externalName: rabbitmq-cluster.rabbitmq-green.svc.cluster.local
+      externalName: green.rabbitmq-cluster.svc.cluster.local
   ```
   This way change in single place will change connection for all environments.
 
@@ -153,19 +156,99 @@ e.g. using management ui
 11. Ensure that all messages are gone from `blue` cluster.  
   It can be done e.g. vhost by vhost. 
   You can use script to get total messages in vhost
-  ```bash
-  get_vhost_stats.sh vhost_name
-  ```
+
+```bash
+get_vhost_stats.sh vhost_name
+ ```
   When they are gone you can disable federation on green cluster
-  ```bash
-  disable_federation.sh vhost_name
-  ```
+```bash
+disable_federation.sh vhost_name
+```
  and remove vhost from blue cluster
-  ```bash
-  delete_vhost.sh vhost_name
-  ```
+```bash
+delete_vhost.sh vhost_name
+```
 12. After verifying all environments we should disable federation on `green` for all vhosts.
 ```bash
   disable_federation_for_all.sh
-  ```
+```
 13. We can delete `blue` cluster while it is not needed any more
+
+### Detailed steps to upgrade cluster using blue-green approach
+
+1. Spin up new cluster `green` e.g. called `delta`  
+2. Run pod to run scripts from inside the cluster.
+  Why?  
+  Export/import processes files with size > 25MB. 
+  `Nginx` has some limits on request size, that blocks running a scripts.
+  `kubectl run myubuntu --image ubuntu:22.04 --rm -it -- /bin/sh`
+  - Install all required tools inside a pod:
+```bash
+apt-get update
+# install text editor e.g. vim
+apt-get install vim
+apt-get install git
+# Clone repository with scripts
+# Generate one time password for this
+git clone https://github.com/wolszakp/rabbitmq-playground.git
+cd rabbitmq-upgrade/blue-green-migration
+chmod 777 *.sh
+# Install all scripts needed dependencies
+./install_dependencies.sh
+```
+3. Update `.env` variables appropriately
+4. Run script `check_connectivity.sh` to confirm that config is correct
+5. Run scirpt `backup_and_restore.sh` to move all configuration from `green` to `blue`
+6. Observe when it finishes. You can do it looking at logs in the `green` server. 
+7. Confirm that `users` migrated sucessfully. 
+  Open shell on one of the `green` cluster pods and check authentication
+  `rabbitmqctl authenticate_user user_name password`
+  Where user and password are taken from the `blue` cluster.
+7. Ensure that user that is used to federation has full permissions 
+  for all vhosts on both `blue` and `green` cluster.  
+  In our case it apperas that he didn't.
+  Permission can be enabled using e.g.
+```bash
+#Set Permissions for User test on Virtual Host /:
+rabbitmqctl set_permissions -p / test ".*" ".*" ".*"
+```
+8. Enable federation for all vhosts
+> **Warning**  
+> This is optional step if you don't want to lose messages.  
+> It is taking some resources escpecially on the `green` cluster.  
+> We `NOT SUCCEEDED` on our Developoment platform. Why?  
+> We enabled federation for all vhosts(>100). Some `vhosts` from `green` cluster were deleted and errors appear in the logs.
+> Then federation start taking then much more resources.
+> It eats more memory and `green` starts to restarting it's pod.  
+> Next time on DEV we will skip federation for all and do it 
+> one-by-one for selected environments.
+
+  `enable_federation_for_all.sh`
+   If for any reason it has failed. You can run it one by one
+   with script `enable_federation.sh vhost_name`. 
+   In our case the issue was connected with non existing pr environments
+   in blue cluster. 
+
+9. Change entry serivice in gitops to `green` cluster
+> **Warning**  
+> Starting from this point users will see the changes.
+
+10. Restart pods dependent from the rabbitmq  
+It is required to refresh dns'es and e.g. recreate some `auto_delete` queues.
+
+```bash
+# Get all namespaces
+namespaces=$(kubectl get namespaces -o jsonpath="{.items[*].metadata.name}")
+
+for ns in $namespaces; do
+  echo $ns; kubectl config set-context --current --namespace=$ns; 
+  kubectl rollout restart deployment name_of_deployment; 
+  ...
+done
+```
+11. Verify logs in the `green` cluster. 
+12. Verify if deployments restart correclty
+```bash
+  kubectl get pod -A --selector app=label_of_app
+  ...
+```
