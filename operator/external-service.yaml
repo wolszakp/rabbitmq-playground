@@ -1,8 +1,8 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: rabbitmq-cluster
+  name: rabbitmq
   namespace: rabbitmq-system
 spec:
   type: ExternalName
-  externalName: rabbitmq-cluster.rabbitmq-blue.svc.cluster.local
+  externalName: blue.rabbitmq-cluster.svc.cluster.local
