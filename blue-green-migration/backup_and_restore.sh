@@ -4,7 +4,7 @@ set -o allexport
 # shellcheck source=/dev/null
 source .env
 set +o allexport
-set -euo pipefail
+set -eo pipefail
 
 echo -e "###################################################################
 # Script Name  : backup_and_restore.sh
@@ -17,9 +17,7 @@ echo -e "###################################################################
 #    Import definition into new cluster - green
 #    Script import environment variables from .env file
 # Args         :
-#    blue_host=${blue_host}
-#    blue_amqp_port=${blue_amqp_port}
-#    blue_protocol=${blue_protocol}
+#    blue_api_url=${blue_api_url}
 #    blue_user=${blue_user}
 #    blue_password=${blue_password:0:1}***${blue_password: -1}
 #    green_api_url=${green_api_url}
